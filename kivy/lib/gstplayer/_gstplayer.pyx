@@ -245,6 +245,8 @@ cdef class GstPlayer:
             g_object_set_int(self.appsink, 'drop', 1)
             g_object_set_int(self.appsink, 'sync', 1)
             g_object_set_int(self.appsink, 'qos', 1)
+            g_object_set_int(self.appsink, 'drop-on-latency', 1)
+            g_object_set_int(self.appsink, 'latency', 100)
             g_object_set_void(self.playbin, 'video-sink', self.appsink)
 
         else:
