@@ -181,6 +181,7 @@ cdef class GstPlayer:
     cdef GstBus *bus
     cdef object uri, sample_cb, eos_cb, message_cb
     cdef gulong hid_sample, hid_message
+    cdef int latency, drop_on_latency
     cdef object __weakref__
 
     def __cinit__(self, *args, **kwargs):
@@ -188,12 +189,14 @@ cdef class GstPlayer:
         self.bus = NULL
         self.hid_sample = self.hid_message = 0
 
-    def __init__(self, uri, sample_cb=None, eos_cb=None, message_cb=None):
+    def __init__(self, uri, sample_cb=None, eos_cb=None, message_cb=None, latency=500, drop_on_latency=1):
         super(GstPlayer, self).__init__()
         self.uri = uri
         self.sample_cb = sample_cb
         self.eos_cb = eos_cb
         self.message_cb = message_cb
+        self.latency = latency
+        self.drop_on_latency = drop_on_latency
         _instances.append(ref(self, _on_player_deleted))
 
         # ensure gstreamer is init
@@ -245,9 +248,8 @@ cdef class GstPlayer:
             g_object_set_int(self.appsink, 'drop', 1)
             g_object_set_int(self.appsink, 'sync', 1)
             g_object_set_int(self.appsink, 'qos', 1)
-            g_object_set_int(self.appsink, 'drop-on-latency', 1)
-            g_object_set_int(self.appsink, 'latency', 100)
             g_object_set_void(self.playbin, 'video-sink', self.appsink)
+
 
         else:
             self.fakesink = gst_element_factory_make('fakesink', NULL)
@@ -260,6 +262,8 @@ cdef class GstPlayer:
         g_object_set_int(self.pipeline, 'async-handling', 1)
         py_uri = <bytes>self.uri.encode('utf-8')
         g_object_set_void(self.playbin, 'uri', <char *>py_uri)
+        g_object_set_int(self.pipeline, 'drop-on-latency', self.drop_on_latency)
+        g_object_set_int(self.pipeline, 'latency', self.latency)
 
         # attach the callback
         # NOTE no need to create a weakref here, as we manage to grab/release
